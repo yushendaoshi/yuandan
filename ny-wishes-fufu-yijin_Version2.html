@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>给你的元旦祝福</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 雪花飘落动画 */
+        @keyframes snow {
+            0% { transform: translateY(-10px) rotate(0deg); opacity: 0.8; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+        .snowflake {
+            position: fixed;
+            color: #fff;
+            font-size: 1.2rem;
+            pointer-events: none;
+            animation: snow linear infinite;
+            z-index: 0;
+        }
+        /* 文字渐显动画 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 1.5s ease forwards;
+        }
+        .delay-1 { animation-delay: 0.3s; opacity: 0; }
+        .delay-2 { animation-delay: 0.6s; opacity: 0; }
+        .delay-3 { animation-delay: 0.9s; opacity: 0; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-red-600 to-red-800 min-h-screen flex items-center justify-center p-4 overflow-hidden">
+    <!-- 雪花背景 -->
+    <div id="snow-container"></div>
+
+    <!-- 祝福卡片 -->
+    <div class="max-w-md w-full bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 md:p-10 relative z-10">
+        <div class="text-center">
+            <!-- 标题 -->
+            <h1 class="text-4xl md:text-5xl font-bold text-red-700 mb-4 fade-in delay-1">2026 元旦快乐</h1>
+            
+            <!-- 祝福语（已替换对象） -->
+            <div class="text-lg md:text-xl text-gray-700 leading-relaxed mb-8 fade-in delay-2">
+                致艺锦大人：<br><br>
+                新年的钟声悄然敲响，愿你平安喜乐，心想事成。    
+                每个清晨有阳光相伴，每个夜晚有宁静相随，<br>
+                以及最重要的，一直有我。
+                往事成诗，来日可期，愿岁月对你温柔以待。
+            </div>
+            
+            <!-- 署名（已替换为富富） -->
+            <p class="text-right text-gray-600 font-medium fade-in delay-3">—— 来自爱你的 富富</p>
+        </div>
+    </div>
+
+    <script>
+        // 生成雪花特效
+        function createSnow() {
+            const container = document.getElementById('snow-container');
+            for (let i = 0; i < 40; i++) {
+                const snow = document.createElement('div');
+                snow.className = 'snowflake';
+                snow.textContent = '❄️';
+                // 随机位置和动画时长
+                snow.style.left = `${Math.random() * 100}vw`;
+                snow.style.animationDuration = `${Math.random() * 8 + 5}s`;
+                snow.style.animationDelay = `${Math.random() * 5}s`;
+                container.appendChild(snow);
+            }
+        }
+        // 页面加载时生成雪花
+        window.onload = createSnow;
+    </script>
+</body>
+</html>
