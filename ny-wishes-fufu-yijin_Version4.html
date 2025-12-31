@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>给你的元旦祝福</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 雪花飘落动画 */
+        @keyframes snow {
+            0% { transform: translateY(-10px) rotate(0deg); opacity: 0.8; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+        .snowflake {
+            position: fixed;
+            color: #fff;
+            font-size: 1.2rem;
+            pointer-events: none;
+            animation: snow linear infinite;
+            z-index: 0;
+        }
+        /* 文字渐显动画 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 1.5s ease forwards;
+        }
+        .delay-1 { animation-delay: 0.3s; opacity: 0; }
+        .delay-2 { animation-delay: 0.6s; opacity: 0; }
+        .delay-3 { animation-delay: 0.9s; opacity: 0; }
+
+        /* 全屏烟花画布，位于雪花之上，祝福卡片之下（z-index 控制） */
+        #fireworks-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* 不阻挡页面交互；鼠标点击会从 document 捕获 */
+            z-index: 1;
+        }
+        /* 确保卡片在最上层 */
+        .card-top { z-index: 10; position: relative; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-red-600 to-red-800 min-h-screen flex items-center justify-center p-4 overflow-hidden">
+    <!-- 烟花画布 -->
+    <canvas id="fireworks-canvas" aria-hidden="true"></canvas>
+
+    <!-- 雪花背景 -->
+    <div id="snow-container"></div>
+
+    <!-- 祝福卡片 -->
+    <div class="max-w-md w-full bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 md:p-10 card-top">
+        <div class="text-center">
+            <!-- 标题 -->
+            <h1 class="text-4xl md:text-5xl font-bold text-red-700 mb-4 fade-in delay-1">2026 元旦快乐</h1>
+            
+            <!-- 祝福语 -->
+            <div class="text-lg md:text-xl text-gray-700 leading-relaxed mb-8 fade-in delay-2">
+                致艺锦大人：<br><br>
+                新年的钟声悄然敲响，愿你平安喜乐，心想事成。<br>
+                每个清晨有阳光相伴，每个夜晚有宁静相随，<br>
+                以及最重要的，一直有我。<br>
+                往事成诗，来日可期，愿岁月对你温柔以待。
+            </div>
+            
+            <!-- 署名（富富） -->
+            <p class="text-right text-gray-600 font-medium fade-in delay-3">—— 来自爱你的 富富</p>
+        </div>
+    </div>
+
+    <script>
+        // -------------------------
+        // 雪花特效（保持原有逻辑）
+        // -------------------------
+        function createSnow() {
+            const container = document.getElementById('snow-container');
+            container.innerHTML = '';
+            for (let i = 0; i < 40; i++) {
+                const snow = document.createElement('div');
+                snow.className = 'snowflake';
+                snow.textContent = '❄️';
+                // 随机位置和动画时长
+                snow.style.left = `${Math.random() * 100}vw`;
+                snow.style.top = `${-10 - Math.random() * 10}vh`;
+                snow.style.animationDuration = `${Math.random() * 8 + 5}s`;
+                snow.style.animationDelay = `${Math.random() * 5}s`;
+                snow.style.fontSize = `${0.8 + Math.random() * 1.6}rem`;
+                container.appendChild(snow);
+            }
+        }
+        window.onload = createSnow;
+
+        // -------------------------
+        // 烟花特效（Canvas）
+        // -------------------------
+        (function () {
+            // 考虑用户偏好：如果用户选择减少动画，则不运行烟花
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                return;
+            }
+
+            const canvas = document.getElementById('fireworks-canvas');
+            const ctx = canvas.getContext('2d');
+            let width = 0;
+            let height = 0;
+            let DPR = Math.max(1, window.devicePixelRatio || 1);
+
+            function resize() {
+                DPR = Math.max(1, window.devicePixelRatio || 1);
+                width = window.innerWidth;
+                height = window.innerHeight;
+                canvas.width = Math.floor(width * DPR);
+                canvas.height = Math.floor(height * DPR);
+                canvas.style.width = width + 'px';
+                canvas.style.height = height + 'px';
+                ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+            }
+            window.addEventListener('resize', resize, { passive: true });
+            resize();
+
+            // 粒子与爆炸管理
+            const particles = [];
+            const maxParticles = 800;
+
+            function random(min, max) {
+                return Math.random() * (max - min) + min;
+            }
+
+            function hsvToRgb(h, s, v) {
+                let f = (n, k = (n + h / 60) % 6) =>
+                    v - v * s * Math.max(Math.min(k, 4 - k, 1), 0);
+                return [Math.round(f(5) * 255), Math.round(f(3) * 255), Math.round(f(1) * 255)];
+            }
+
+            function spawnFirework(x, y, options = {}) {
+                // options: colorHue, count, speed, decay
+                const hue = options.colorHue ?? Math.floor(random(0, 360));
+                const count = options.count ?? Math.floor(random(20, 60));
+                const speed = options.speed ?? random(1.5, 6);
+                const decay = options.decay ?? random(0.015, 0.03);
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const magnitude = Math.cos(Math.random() * Math.PI / 2) * speed * (0.6 + Math.random() * 0.9);
+                    const vx = Math.cos(angle) * magnitude;
+                    const vy = Math.sin(angle) * magnitude;
+                    const life = random(60, 120); // 帧数尺度
+                    const brightness = random(0.6, 1);
+                    const [r, g, b] = hsvToRgb(hue + random(-10, 10), 1, brightness);
+                    particles.push({
+                        x: x,
+                        y: y,
+                        vx: vx,
+                        vy: vy,
+                        ax: 0,
+                        ay: 0.03, // gravity
+                        life: life,
+                        decay: decay,
+                        hue: hue,
+                        alpha: 1,
+                        color: `rgba(${r},${g},${b},`,
+                        flick: Math.random() > 0.5
+                    });
+                }
+                // 限制总粒子数，避免内存、CPU 飙升
+                if (particles.length > maxParticles) {
+                    particles.splice(0, particles.length - maxParticles);
+                }
+            }
+
+            // 自动定时触发（像烟花表演）
+            let autoTimer = 0;
+            function autoSpawnTick() {
+                // 每隔一段时间触发一次（随机）
+                if (Math.random() < 0.03) {
+                    // 在屏幕上方 20% - 70% 高度随机爆开
+                    const x = random(width * 0.1, width * 0.9);
+                    const y = random(height * 0.1, height * 0.6);
+                    spawnFirework(x, y, {
+                        colorHue: Math.floor(random(0, 360)),
+                        count: Math.floor(random(30, 80)),
+                        speed: random(2, 6),
+                        decay: random(0.016, 0.03)
+                    });
+                }
+                requestAnimationFrame(autoSpawnTick);
+            }
+            requestAnimationFrame(autoSpawnTick);
+
+            // 鼠标 / 触摸触发
+            function pointerHandler(e) {
+                // 支持触摸和鼠标
+                let x, y;
+                if (e.touches && e.touches.length) {
+                    const t = e.touches[0];
+                    x = t.clientX;
+                    y = t.clientY;
+                } else {
+                    x = e.clientX;
+                    y = e.clientY;
+                }
+                // 手动触发更大、更多颜色的烟花
+                spawnFirework(x, y, {
+                    colorHue: Math.floor(random(0, 360)),
+                    count: Math.floor(random(50, 120)),
+                    speed: random(3, 7),
+                    decay: random(0.01, 0.025)
+                });
+            }
+            // 画布设置 pointer-events: none，因此监听 document 的点击
+            window.addEventListener('click', pointerHandler);
+            window.addEventListener('touchstart', pointerHandler, { passive: true });
+
+            // 渲染循环
+            function render() {
+                // 轻微透明的黑色覆盖以产生拖影效果
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+                ctx.fillRect(0, 0, width, height);
+
+                // 使用更明亮的叠加方式渲染粒子
+                ctx.globalCompositeOperation = 'lighter';
+
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    // 更新
+                    p.vx *= 0.995; // 空气阻力
+                    p.vy *= 0.995;
+                    p.vy += p.ay;
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life -= 1;
+                    p.alpha -= p.decay;
+
+                    // 绘制
+                    const size = Math.max(0.5, Math.min(3.5, p.alpha * 3.5));
+                    if (p.flick && Math.random() < 0.2) {
+                        // flicker
+                        ctx.fillStyle = p.color + Math.min(1, p.alpha * 1.4) + ')';
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, size * random(0.3, 1.4), 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        ctx.fillStyle = p.color + Math.max(0, p.alpha) + ')';
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    // 小尾巴
+                    if (p.alpha > 0.02) {
+                        ctx.strokeStyle = p.color + Math.max(0, p.alpha * 0.6) + ')';
+                        ctx.lineWidth = Math.max(0.5, size / 2);
+                        ctx.beginPath();
+                        ctx.moveTo(p.x - p.vx * 0.8, p.y - p.vy * 0.8);
+                        ctx.lineTo(p.x, p.y);
+                        ctx.stroke();
+                    }
+
+                    // 移除已消亡的粒子
+                    if (p.life <= 0 || p.alpha <= 0) {
+                        particles.splice(i, 1);
+                    }
+                }
+
+                // 若粒子较少，则略微恢复底色透明度，使残影消退更快
+                requestAnimationFrame(render);
+            }
+            requestAnimationFrame(render);
+
+            // 在不可见时降低开销
+            document.addEventListener('visibilitychange', function () {
+                if (document.hidden) {
+                    // 暂停 heavy spawn by emptying interval behavior (we already use RAF loops that do little when hidden)
+                } else {
+                    // nothing special needed; RAF resumes
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
